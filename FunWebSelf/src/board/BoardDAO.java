@@ -319,10 +319,10 @@ public class BoardDAO implements IBoardDAO {
 	}
 
 	//deletePro.jsp페이지에서 호출하는 메소드
-		//삭제할 글번호, 삭제를 위해 입력한 비밀번호, 글을 작성한 사람의 아이디를 매개변수로 전달받아
-		//삭제를 위해 입력한 비밀번호가 DB에 저장된 글의 비밀번호가 일치하면 글을 작성한 사람의 id + 삭제할 글번호에 해당하는 글 정보 하나를 삭제하는 기능의 메소드
-		@Override
-		public void deleteBoard(int num, String passwd, String id) {
+	//삭제할 글번호, 삭제를 위해 입력한 비밀번호, 글을 작성한 사람의 아이디를 매개변수로 전달받아
+	//삭제를 위해 입력한 비밀번호가 DB에 저장된 글의 비밀번호가 일치하면 글을 작성한 사람의 id + 삭제할 글번호에 해당하는 글 정보 하나를 삭제하는 기능의 메소드
+	@Override
+	public void deleteBoard(int num, String passwd, String id) {
 			
 			String sql = "";
 			
@@ -362,11 +362,93 @@ public class BoardDAO implements IBoardDAO {
 			}
 			
 		}
-
+	
+	//부모글(주글)의 pos열에 저장된 값을 매개변수로 전달 받아 부모글의 pos열에 저장된 값보다 큰 pos열의 값이 저장된 주글(부모글)이 존재하면
+	//pos열에 대한 값을 1증가하여 업데이트
+	//→ 답변글 다는 규칙 1
+	public void replyUpPos(int Parentpos) {
+		try {
+			//1. DB와 연결(커넥션풀에서 DB와 연결된 정보를 가지고 있는 Connection객체 빌려오기)
+			con = ds.getConnection();
+			//2. 부모글(주글)의 pos열에 저장된 값을 매개변수로 전달 받아 부모글의 pos열에 저장된 값보다 큰 pos열의 값이 저장된 주글(부모글)이 존재하면
+			//   pos열에 대한 값을 1증가하여 업데이트하는 UPDATE문 작성
+			String sql = "update board set pos=pos+1 where pos > ?";
+			//3. PreparedStatement 실행객체 얻기
+			pstmt = con.prepareStatement(sql);
+			pstmt.setInt(1, Parentpos);
+			//4. UPDATE문 실행
+			pstmt.executeUpdate();
+			
+		} catch (Exception e) {
+			System.out.println("BoardDAO의 replyUpPos메소드 내부에서 쿼리문 실행 오류: " + e);
+		} finally {
+			freeResource();	
+		}
+		
+	}
+	
+	//답글 insert
+	//규칙2. 답변글을 insert할 때 부모글의 pos열의 값에 1 더한 값을 insert
+	//규칙3. 답변글을 insert할 때 부모글의 depth열의 값에 1 더한 값을 insert		
 	@Override
 	public void replyBoard(BoardBean boardBean) {
-		// TODO Auto-generated method stub
 		
+		String sql = "";
+		
+		try {
+			//1. 커넥션풀에서 커넥션 객체 빌려오기
+			con = ds.getConnection();
+			
+			//2. 규칙2. 답변글을 insert할 때 부모글의 pos열의 값에 1 더한 값을 insert
+			int pos = boardBean.getPos() + 1;
+			//3. 규칙3. 답변글을 insert할 때 부모글의 depth열의 값에 1 더한 값을 insert		
+			int depth = boardBean.getDepth() + 1;
+			
+			
+			
+			//6. 답변글 Insert문장 만들기 규칙3
+			//   → 새로운 주 글을 insert할 때 pos열과 depth열의 값은 0으로 설정
+			sql = "insert into board(name, id, passwd, subject, content, pos, depth, count) " + 
+							"values((select name from member where id=?), ?, ?, ?, ?, ?, ?, ?)";
+			//7. PreparedStatement 객체 얻기
+			pstmt = con.prepareStatement(sql);
+			pstmt.setString(1, boardBean.getId());	//로그인하고 글작성하는 사람의 이름을 select절에서 조회하기 위해 ?값을 member테이블의 id로 설정
+			pstmt.setString(2, boardBean.getId());	//글을 작성하는 사람의 id로 설정
+			pstmt.setString(3, boardBean.getPasswd());
+			pstmt.setString(4, boardBean.getSubject());
+			pstmt.setString(5, boardBean.getContent());
+			pstmt.setInt(6, pos);	//규칙2. 답변글을 insert할 때 부모글의 pos열의 값에 1 더한 값을 insert
+			pstmt.setInt(7, depth);	//규칙3. 답변글을 insert할 때 부모글의 depth열의 값에 1 더한 값을 insert
+			pstmt.setInt(8, 0);	//count	: 글조회수
+			
+			//8. insert문 실행
+			pstmt.executeUpdate();
+			
+			
+		} catch (Exception e) {
+			System.out.println("BoardDAO의 replyBoard메소드 내부에서 쿼리문 실행오류: " + e.toString());
+		} finally {
+			//자원해제
+			freeResource();
+		}
+		
+		
+	}//replyBoard메소드 닫기
+	
+	//notice.jsp의 글 행을 보여주는 영역에서 호출하는 메소드
+	//게시판 조회 목록 화면에 답변글들의 들여쓰기 정도 값 처리하는 메소드
+	public String useDepth(int depth) { //조회된 글의 들여쓰기 정도값을 매개변수로 전달
+		String result = "";
+		//for반복문을 사용하여 %nbsp;을 반복하여 ___들여쓰기 공백 만들기
+		for(int i=0; i<depth*3; i++) {
+			result += "&nbsp;";
+		}
+		
+		if(depth != 0) {
+			result += "└ ";
+		}
+		
+		return result;
 	}
 	
 	public int getBoardCount() {

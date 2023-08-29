@@ -45,14 +45,7 @@
 			<!-- 메인이미지 -->
 	
 			<!-- 왼쪽메뉴 -->
-			<nav id="sub_menu">
-				<ul>
-					<li><a href="#">Notice</a></li>
-					<li><a href="#">Public News</a></li>
-					<li><a href="#">Driver Download</a></li>
-					<li><a href="#">Service Policy</a></li>
-				</ul>
-			</nav>
+			<jsp:include page="../inc/left.jsp" />
 			<!-- 왼쪽메뉴 -->
 	
 			<!-- 게시판 -->
@@ -70,7 +63,7 @@
 		
 		//3.1  글 상세보기 화면을 띄우기 전, 글 제목 클릭 시 클릭한 글의 조회수 1 증가(UPDATE구문 작업)
 		//    글 번호를 전달하여 글 번호에 해당되는 글의 조회수(count)의 값을 1증가되게 UPDATE문 작성
-		dao.updateReadCount(num);
+		dao.updateReadCount(num); 
 		
 		//3.2  글 번호에 해당하는 글 조회(SELECT구문 작업)
 		BoardBean boardBean = dao.getBoard(num);
@@ -120,8 +113,9 @@
 				if(id != null) { //세션에 아이디가 저장되어 있으면(로그인 했으면)
 %>						
 					<input type="button" value="글 수정" class="btn" onclick="location.href='update.jsp?num=<%=boardBean.getNum()%>'">
-					<input type="button" value="글 삭제" class="btn">
-					<input type="button" value="답글 작성" class="btn">
+					<input type="button" value="글 삭제" class="btn" onclick="location.href='delete.jsp?num=<%=boardBean.getNum()%>'">
+					<input type="button" value="답글 작성" class="btn" onclick="location.href='reWrite.jsp?num=<%=boardBean.getNum()%>'">
+					<input type="button" value="글 목록" class="btn" onclick="location.href='notice.jsp'">
 <%						
 				} else { //세션에 아이디가 저장되어 있지 않으면(로그인 안했으면)
 %>
